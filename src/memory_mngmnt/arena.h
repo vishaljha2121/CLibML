@@ -1,6 +1,7 @@
 //
 // Created by Vishal Jha on 13/01/26.
 //
+#pragma once
 
 #include "../base.h"
 #define ARENA_BASE_POS (sizeof(mem_arena))

@@ -1,11 +1,7 @@
 //
 // Created by Vishal Jha on 13/01/26.
 //
-#include <stdio.h>
 #include <stdint.h>
-#include <string.h>
-#include <stdbool.h>
-#include <math.h>
 
 typedef int8_t i8;
 typedef int16_t i16;

@@ -10,5 +10,9 @@ add_executable(MLFramework src/main.c
         src/tensor/tensor.c
         src/tensor/tensor.h
         src/random_generators/prng.c
-        src/random_generators/prng.h)
+        src/random_generators/prng.h
+        src/autograd/autograd.c
+        src/autograd/autograd.h
+        src/model/modelVariables.c
+        src/model/modelVariables.h)
 add_compile_options(-O3 -march=native -Wall -Wextra)

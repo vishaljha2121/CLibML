@@ -3,6 +3,11 @@
 //
 
 #include "tensor.h"
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "../random_generators/prng.h"
 
 matrix* mat_create(mem_arena* arena, u32 rows, u32 cols) {
