@@ -13,6 +13,10 @@ add_executable(MLFramework src/main.c
         src/random_generators/prng.h
         src/autograd/autograd.c
         src/autograd/autograd.h
-        src/model/modelVariables.c
-        src/model/modelVariables.h)
+        src/model/variables/modelVariables.c
+        src/model/variables/modelVariables.h
+        src/model/program/modelProgram.c
+        src/model/program/modelProgram.h
+        src/model/train/train.c
+        src/model/train/train.h)
 add_compile_options(-O3 -march=native -Wall -Wextra)
