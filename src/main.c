@@ -57,7 +57,7 @@ void create_mnist_model(mem_arena* arena, model_context* model) {
     model_var* cost = mv_cross_entropy(arena, model, y, output, MV_FLAG_COST);
 }
 
-
+/// MAIN ///
 int main(void) {
     // printf("Hello, World!\n");
     // return 0;
