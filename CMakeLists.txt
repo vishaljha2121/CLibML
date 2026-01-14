@@ -3,7 +3,8 @@ project(MLFramework C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(MLFramework src/main.c
+add_executable(MLFramework
+        src/main.c
         src/memory_mngmnt/arena.h
         src/memory_mngmnt/arena.c
         src/base.h
