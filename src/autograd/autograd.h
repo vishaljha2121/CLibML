@@ -4,7 +4,7 @@
 
 #ifndef AUTOGRAD_H
 #define AUTOGRAD_H
-#include "../base.h"
+#include "../../include/base.h"
 #include "../tensor/tensor.h"
 
 b32 mat_relu(matrix* out, const matrix* in);

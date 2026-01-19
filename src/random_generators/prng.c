@@ -3,6 +3,8 @@
 //
 
 #include "prng.h"
+
+#include <math.h>
 static prng_state s_prng_state = {
     0x853c49e6748fea9bULL, 0xda3e39cb94b95bdbULL,
 };
@@ -37,4 +39,12 @@ f32 prng_randf_r(prng_state* rng) {
 
 f32 prng_randf(void) {
     return prng_randf_r(&s_prng_state);
+}
+
+f32 prng_rand_f32(void) {
+    return prng_rand_f32_r(&s_prng_state);
+}
+
+f32 prng_rand_f32_r(prng_state* rng) {
+    return ldexpf(prng_rand_r(rng), -32);
 }

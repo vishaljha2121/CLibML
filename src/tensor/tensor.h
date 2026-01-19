@@ -1,7 +1,7 @@
 //
 // Created by Vishal Jha on 13/01/26.
 //
-#include "../base.h"
+#include "../../include/base.h"
 #include "../memory_mngmnt/arena.h"
 #ifndef TENSOR_H
 #define TENSOR_H
