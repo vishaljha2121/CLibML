@@ -1,0 +1,3 @@
+run train tests/mnist.tsl data/mnist tests/mnist.tsd
+bt
+quit

@@ -1,0 +1,16 @@
+input:
+    shape = (28, 28, 1);
+
+flatten:
+
+dense:
+    size = 128;
+
+activation:
+    type = relu;
+
+dense:
+    size = 10;
+
+activation:
+    type = softmax;

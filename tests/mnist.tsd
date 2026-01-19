@@ -1,0 +1,6 @@
+epochs = 1;
+batch_size = 32;
+learning_rate = 0.001;
+optimizer = adam;
+save_interval = 1;
+save_path = "tests/model_epoch_";
