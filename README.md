@@ -12,16 +12,85 @@ This framework utilizes a custom **Linear Memory Arena** allocator instead of st
   - **Cache Locality**: Related data structures are allocated contiguously, improving CPU cache hits.
   - **Safety & Cleanup**: Entire arenas can be reset or freed instantly (`mga_reset` or `mga_destroy`), completely eliminating memory leaks common in complex graph structures.
 
+**Example Usage**:
+```c
+mga_desc desc = { .desired_max_size = MGA_MiB(512), .desired_block_size = MGA_MiB(4) };
+mg_arena* arena = mga_create(&desc);
+
+// O(1) Allocation
+float* data = MGA_PUSH_ARRAY(arena, float, 1000); 
+
+// No need to free 'data' individually.
+mga_destroy(arena); // Frees everything at once.
+```
+
 ### 2. High-Performance Tensor Engine
-At the core is a specialized tensor compute engine (`tensor.c` and backends) designed for neural network workloads.
+At the core is a specialized tensor compute engine designed for neural network workloads.
 - **Implementation**: Supports multi-dimensional tensor operations with optimized backends. Includes automatic broadcasting, efficient slicing (views), and vectorized operations where applicable.
 - **Benefits**: Provides the computational backbone for training and inference, ensuring operations like Matrix Multiplication, Convolution, and Element-wise arithmetic are fast and numerically stable.
 
+**Example Usage**:
+```c
+tensor* a = tensor_create(arena, (tensor_shape){28, 28, 1});
+tensor* b = tensor_create(arena, (tensor_shape){28, 28, 1});
+
+// Optimized in-place addition
+tensor_add_ip(a, b); 
+```
+
 ### 3. Modular Architecture & CLI
-The framework is built with modularity in first principles, separating the Network Logic, Data Loading, and User Interface.
-- **CLI Design**: A robust Command Line Interface (CLI) allows users to interact with the framework without writing code.
-- **Configuration-Driven**: Define complex network architectures in `.tsl` (Tensor Layout) files and training regimes in `.tsd` (Training Description) files.
-- **Benefits**: Enables rapid prototyping and experimentation. You can modify network depth, layer types, or learning rates by simply editing a text file and re-running the command.
+The framework is built with modularity in first principles.
+
+#### Workflow Diagram
+```mermaid
+graph TD
+    A[CLI Input] -->|Load| B(Network Layout .tsl)
+    A -->|Load| C(Training Description .tsd)
+    A -->|Load| D(Dataset .mat)
+    B --> E[Network Structure]
+    C --> F[Training Loop]
+    D --> F
+    E --> F
+    F -->|Forward Pass| G[Compute Cost]
+    G -->|Backprop| H[Update Weights]
+    H -->|Repeat| F
+    F -->|End| I[Save Model .tsn]
+```
+
+#### Architecture (OOP) Structure
+Although written in C, the system follows an Object-Oriented design pattern:
+```mermaid
+classDiagram
+    class Network {
+        +Layer** layers
+        +bool training_mode
+        +feedforward()
+        +backprop()
+    }
+    class Layer {
+        +Tensor* input
+        +Tensor* output
+        +Tensor* weights
+        +Tensor* bias
+        +feedforward()
+        +backprop()
+    }
+    class Tensor {
+        +float* data
+        +int width
+        +int height
+        +int depth
+    }
+    class MG_Arena {
+        +void* memory_block
+        +push()
+        +pop()
+    }
+
+    Network "1" *-- "many" Layer : contains
+    Layer "1" *-- "many" Tensor : uses
+    Tensor "1" o-- "1" MG_Arena : allocated_in
+```
 
 ## Prerequisites
 
