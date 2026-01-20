@@ -1,1 +1,23 @@
-/data/*
+# Build directories
+cmake-build-debug/
+build/
+bin/
+lib/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.DS_Store
+
+# Data
+data/
+*.mat
+*.ubyte
+
+# Generated Models
+tests/*.tsn
+*.tsn
+
+# Executables
+MLFramework
