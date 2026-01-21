@@ -110,17 +110,55 @@ void snake_get_state(SnakeState* state, tensor* out) {
     tensor_fill(out, 0.0f);
     f32* data = (f32*)out->data;
     
-    // Mark Food
-    data[state->food.y * GRID_W + state->food.x] = 2.0f; // Food value
+    Point head = state->body[0];
     
-    // Mark Body
-    for (int i = 0; i < state->length; i++) {
-        int idx = state->body[i].y * GRID_W + state->body[i].x;
-        if (idx >= 0 && idx < GRID_W * GRID_H) {
-            data[idx] = 1.0f; // Body value
-             if (i == 0) data[idx] = 3.0f; // Head value
-        }
+    // 1. Danger (Up, Right, Down, Left)
+    // Check Up (x, y-1)
+    if (head.y - 1 < 0) data[0] = 1.0f;
+    else {
+        for (int i = 1; i < state->length; i++) 
+            if (state->body[i].x == head.x && state->body[i].y == head.y - 1) data[0] = 1.0f;
     }
+    
+    // Check Right (x+1, y)
+    if (head.x + 1 >= GRID_W) data[1] = 1.0f;
+    else {
+        for (int i = 1; i < state->length; i++) 
+            if (state->body[i].x == head.x + 1 && state->body[i].y == head.y) data[1] = 1.0f;
+    }
+    
+    // Check Down (x, y+1)
+    if (head.y + 1 >= GRID_H) data[2] = 1.0f;
+    else {
+        for (int i = 1; i < state->length; i++) 
+            if (state->body[i].x == head.x && state->body[i].y == head.y + 1) data[2] = 1.0f;
+    }
+    
+    // Check Left (x-1, y)
+    if (head.x - 1 < 0) data[3] = 1.0f;
+    else {
+        for (int i = 1; i < state->length; i++) 
+            if (state->body[i].x == head.x - 1 && state->body[i].y == head.y) data[3] = 1.0f;
+    }
+
+    // 2. Current Direction (Up, Right, Down, Left)
+    // We need to infer direction from Head vs second segment.
+    Point neck = state->body[1];
+    if (state->length < 2) {
+         // Default if single (shouldn't happen with init 3)
+         data[5] = 1.0f; // Assume Right
+    } else {
+        if (head.y < neck.y) data[4] = 1.0f; // Up
+        else if (head.x > neck.x) data[5] = 1.0f; // Right
+        else if (head.y > neck.y) data[6] = 1.0f; // Down
+        else if (head.x < neck.x) data[7] = 1.0f; // Left
+    }
+    
+    // 3. Food Direction (Up, Right, Down, Left)
+    if (state->food.y < head.y) data[8] = 1.0f;
+    if (state->food.x > head.x) data[9] = 1.0f;
+    if (state->food.y > head.y) data[10] = 1.0f;
+    if (state->food.x < head.x) data[11] = 1.0f;
 }
 
 void snake_render(SnakeState* state) {

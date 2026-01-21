@@ -21,11 +21,13 @@ void snake_train(mg_arena* arena, char* load_path) {
     }
     
     SnakeState state;
-    tensor* state_tensor = tensor_create(arena, (tensor_shape){ GRID_W * GRID_H, 1, 1 });
-    tensor* next_state_tensor = tensor_create(arena, (tensor_shape){ GRID_W * GRID_H, 1, 1 });
+    tensor* state_tensor = tensor_create(arena, (tensor_shape){ STATE_SIZE, 1, 1 });
+    tensor* next_state_tensor = tensor_create(arena, (tensor_shape){ STATE_SIZE, 1, 1 });
     
     int episodes = 100000;
     
+    time_t start_time = time(NULL);
+
     for (int e = 0; e < episodes; e++) {
         snake_init(&state);
         snake_get_state(&state, state_tensor);
@@ -45,23 +47,46 @@ void snake_train(mg_arena* arena, char* load_path) {
             snake_agent_train(agent);
             
             // Move state pointer (Copy contents)
-            memcpy(state_tensor->data, next_state_tensor->data, GRID_W * GRID_H * sizeof(f32));
-            
-            // Optional: Render training (slow)
-            // if (e % 100 == 0) { snake_render(&state); usleep(50000); }
+            memcpy(state_tensor->data, next_state_tensor->data, STATE_SIZE * sizeof(f32));
             steps++;
         }
         
         snake_agent_decay_epsilon(agent);
 
-        if (e % 100 == 0) {
-            printf("Episode %d: Score %d, Reward %.2f, Epsilon %.3f\n", e, state.score, total_reward, agent->epsilon);
+        if (e % 1000 == 0 || e == episodes - 1) {
+            // ETA Calculation
+            time_t now = time(NULL);
+            double elapsed = difftime(now, start_time);
+            double avg_time = (e == 0) ? 0.0 : elapsed / e;
+            double remaining = avg_time * (episodes - e);
             
+            int rem_h = (int)(remaining / 3600);
+            int rem_m = (int)((remaining - rem_h * 3600) / 60);
+            int rem_s = (int)remaining % 60;
+            
+            // Progress Bar
+            float progress = (float)e / episodes;
+            int bar_width = 40;
+            int pos = bar_width * progress;
+            char bar[41];
+            for (int i = 0; i < bar_width; i++) {
+                if (i < pos) bar[i] = '=';
+                else if (i == pos) bar[i] = '>';
+                else bar[i] = ' ';
+            }
+            bar[bar_width] = '\0';
+            
+            printf("\r[%-40s] %3.0f%% | Ep: %d | Score: %d | Rew: %.2f | Eps: %.3f | ETA: %02d:%02d:%02d", 
+                   bar, progress * 100.0f, e, state.score, total_reward, agent->epsilon, rem_h, rem_m, rem_s);
+            fflush(stdout);
+
             // Save model
             mga_temp scratch = mga_scratch_get(NULL, 0);
             string8 path = str8_pushf(scratch.arena, "tests/snake/snake_model_%d.tsn", e);
             snake_agent_save(agent, path);
             mga_scratch_release(scratch);
+            
+            if (e % 1000 == 0 && e > 0) printf("\n"); // Newline occasionally to keep history
         }
     }
     
@@ -83,7 +108,7 @@ void snake_play(mg_arena* arena, char* model_path) {
     SnakeState state;
     snake_init(&state);
     
-    tensor* state_tensor = tensor_create(arena, (tensor_shape){ GRID_W * GRID_H, 1, 1 });
+    tensor* state_tensor = tensor_create(arena, (tensor_shape){ STATE_SIZE, 1, 1 });
     
     printf("\033[2J"); // Clear Screen
     

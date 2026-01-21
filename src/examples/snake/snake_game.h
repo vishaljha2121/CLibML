@@ -14,6 +14,7 @@
 #define ACTION_LEFT 2
 #define ACTION_RIGHT 3
 #define NUM_ACTIONS 4
+#define STATE_SIZE 12
 
 // Rewards
 #define REWARD_FOOD 20.0f

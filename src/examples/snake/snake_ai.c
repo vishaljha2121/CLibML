@@ -14,7 +14,7 @@ SnakeAgent* snake_agent_create(mg_arena* arena) {
     // Input: GRID_W * GRID_H (Flattened grid)
     // Output: 4 Actions
     layer_desc descs[] = {
-        { .type = LAYER_INPUT, .input = { .shape = (tensor_shape){ GRID_W * GRID_H, 1, 1 } } },
+        { .type = LAYER_INPUT, .input = { .shape = (tensor_shape){ STATE_SIZE, 1, 1 } } },
         { .type = LAYER_DENSE, .dense = { .size = 128 } },
         { .type = LAYER_ACTIVATION, .activation = { .type = ACTIVATION_RELU } },
         { .type = LAYER_DENSE, .dense = { .size = 128 } },
@@ -35,8 +35,8 @@ SnakeAgent* snake_agent_create(mg_arena* arena) {
     agent->epsilon = EPSILON_START;
     
     // 3. Pre-allocate Batch Tensors
-    agent->batch_states = tensor_create(arena, (tensor_shape){ GRID_W * GRID_H, 1, BATCH_SIZE });
-    agent->batch_next_states = tensor_create(arena, (tensor_shape){ GRID_W * GRID_H, 1, BATCH_SIZE });
+    agent->batch_states = tensor_create(arena, (tensor_shape){ STATE_SIZE, 1, BATCH_SIZE });
+    agent->batch_next_states = tensor_create(arena, (tensor_shape){ STATE_SIZE, 1, BATCH_SIZE });
     
     return agent;
 }
@@ -86,17 +86,17 @@ void snake_agent_remember(mg_arena* arena, SnakeAgent* agent, tensor* state, int
     
     // Use global storage
     if (!g_state_storage) {
-        g_state_storage = malloc(MAX_REPLAY_SIZE * GRID_W * GRID_H * sizeof(f32));
-        g_next_state_storage = malloc(MAX_REPLAY_SIZE * GRID_W * GRID_H * sizeof(f32));
+        g_state_storage = malloc(MAX_REPLAY_SIZE * STATE_SIZE * sizeof(f32));
+        g_next_state_storage = malloc(MAX_REPLAY_SIZE * STATE_SIZE * sizeof(f32));
         
         // Zero init
-        memset(g_state_storage, 0, MAX_REPLAY_SIZE * GRID_W * GRID_H * sizeof(f32));
-        memset(g_next_state_storage, 0, MAX_REPLAY_SIZE * GRID_W * GRID_H * sizeof(f32));
+        memset(g_state_storage, 0, MAX_REPLAY_SIZE * STATE_SIZE * sizeof(f32));
+        memset(g_next_state_storage, 0, MAX_REPLAY_SIZE * STATE_SIZE * sizeof(f32));
     }
     
     // Copy data
-    memcpy(&g_state_storage[idx * GRID_W * GRID_H], state->data, GRID_W * GRID_H * sizeof(f32));
-    memcpy(&g_next_state_storage[idx * GRID_W * GRID_H], next_state->data, GRID_W * GRID_H * sizeof(f32));
+    memcpy(&g_state_storage[idx * STATE_SIZE], state->data, STATE_SIZE * sizeof(f32));
+    memcpy(&g_next_state_storage[idx * STATE_SIZE], next_state->data, STATE_SIZE * sizeof(f32));
     
     // Create 'View' Tensors (Don't own data, just point to storage)
     // Actually we can't easily create view tensors without creating a struct.
@@ -137,8 +137,8 @@ void snake_agent_train(SnakeAgent* agent) {
     mga_temp scratch = mga_scratch_get(NULL, 0);
     
     // Create temp tensors for single item processing
-    tensor* state_t = tensor_create(scratch.arena, (tensor_shape){ GRID_W * GRID_H, 1, 1 });
-    tensor* next_state_t = tensor_create(scratch.arena, (tensor_shape){ GRID_W * GRID_H, 1, 1 });
+    tensor* state_t = tensor_create(scratch.arena, (tensor_shape){ STATE_SIZE, 1, 1 });
+    tensor* next_state_t = tensor_create(scratch.arena, (tensor_shape){ STATE_SIZE, 1, 1 });
     tensor* q_eval = tensor_create(scratch.arena, (tensor_shape){ NUM_ACTIONS, 1, 1 });
     tensor* q_next = tensor_create(scratch.arena, (tensor_shape){ NUM_ACTIONS, 1, 1 });
     
@@ -155,8 +155,8 @@ void snake_agent_train(SnakeAgent* agent) {
         int idx = rand() % agent->replay_buffer.count;
         
         // Copy state data
-        memcpy(state_t->data, &g_state_storage[idx * GRID_W * GRID_H], GRID_W * GRID_H * sizeof(f32));
-        memcpy(next_state_t->data, &g_next_state_storage[idx * GRID_W * GRID_H], GRID_W * GRID_H * sizeof(f32));
+        memcpy(state_t->data, &g_state_storage[idx * STATE_SIZE], STATE_SIZE * sizeof(f32));
+        memcpy(next_state_t->data, &g_next_state_storage[idx * STATE_SIZE], STATE_SIZE * sizeof(f32));
         
         // 1. Manual Feedforward State (Populating Backprop Cache)
         // Reset in_out to state input
