@@ -156,6 +156,50 @@ To run inference using a trained model:
 ```
 *(Note: Generic input file loading for inference is currently a placeholder. The system validates model loading.)*
 
+
+## Snake Reinforcement Learning (DQN)
+
+This project includes a fully functional Reinforcement Learning example where an AI learns to play Snake using Deep Q-Learning (DQN).
+
+### 1. Overview
+- **Environment**: A custom 10x10 Snake implementation (`src/examples/snake`).
+- **Algorithm**: Deep Q-Network (DQN) with Experience Replay and Epsilon-Greedy exploration.
+- **Rendering**: Retro-style console graphics with in-place updates.
+
+### 2. Architecture
+- **`snake_game.c`**: Handles game logic (movement, collision, food, state representation).
+- **`snake_ai.c`**: Implements the DQN Agent.
+    - **Replay Buffer**: Stores moves (State, Action, Reward, Next State) to train on random batches.
+    - **Custom Training Loop**: Manually calls `network_feedforward` and `layer_backprop` to implement the Q-Learning update rule: `Q(s,a) = r + gamma * max(Q(s'))`.
+- **`snake_main.c`**: CLI entry point for the snake command.
+
+### 3. How to Run
+
+#### Train the Agent
+Train the agent from scratch or resume from a checkpoint.
+```bash
+# Start fresh
+./MLFramework snake train
+
+# Resume from a model (e.g., after 300 episodes)
+./MLFramework snake train tests/snake/snake_model_300.tsn
+```
+*Models are saved to `tests/snake/` every 100 episodes.*
+
+#### Watch the AI Play
+Load a trained model and watch it play in your terminal.
+```bash
+./MLFramework snake play tests/snake/snake_final.tsn
+```
+
+### 4. Implementation Details
+- **State**: A 10x10 grid flattened to 100 inputs. Values: Empty(0), Body(1), Food(2), Head(3).
+- **Rewards**:
+    - **Food**: +20.0 (High reward for objective)
+    - **Death**: -100.0 (Severe penalty for dying)
+    - **Step**: -0.1 (Small penalty to encourage speed)
+- **Epsilon Decay**: Starts at 1.0 (100% random) and decays to 0.01 over ~1000 episodes to shift from Exploration to Exploitation.
+
 ## File Formats
 
 ### Network Layout (`.tsl`)

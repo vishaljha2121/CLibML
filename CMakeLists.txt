@@ -54,5 +54,8 @@ add_executable(MLFramework
         src/network/network.c
         include/img.h
         src/tensor/tensor_backend_cpu.c
+        src/examples/snake/snake_game.c
+        src/examples/snake/snake_ai.c
+        src/examples/snake/snake_main.c
         src/image/img.c)
 add_compile_options(-O3 -march=native -Wall -Wextra)

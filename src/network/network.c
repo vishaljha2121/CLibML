@@ -285,6 +285,40 @@ error:
     return NULL;
 }
 
+void network_load_existing(network* nn, string8 file_name) {
+    mga_temp scratch = mga_scratch_get(NULL, 0);
+
+    string8 file = file_read(scratch.arena, file_name);
+
+    if (!str8_equals(_tsn_header, str8_substr(file, 0, _tsn_header.size))) {
+        ERR(ERR_PARSE, "Cannot load network: not tsn file");
+        mga_scratch_release(scratch);
+        return;
+    }
+
+    file = str8_substr(file, _tsn_header.size, file.size);
+
+    u64 tst_index = 0;
+    if (!str8_index_of(file, tensor_get_tst_header(), &tst_index)) {
+        ERR(ERR_PARSE, "Cannot load network: invalid tsn file");
+        mga_scratch_release(scratch);
+        return;
+    }
+
+    // string8 layout_str = str8_substr(file, 0, tst_index);
+    string8 tensors_str = str8_substr(file, tst_index, file.size);
+
+    // We assume the layout is already correct in 'nn'
+    
+    tensor_list params = tensor_list_from_str(scratch.arena, tensors_str);
+
+    for (u32 i = 0; i < nn->num_layers; i++) {
+        layer_load(nn->layers[i], &params, i);
+    }
+
+    mga_scratch_release(scratch);
+}
+
 void network_delete(network* nn) {
     if (nn == NULL) {
         ERR(ERR_INVALID_INPUT, "Cannot delete NULL network");

@@ -12,7 +12,11 @@ void print_usage() {
     printf("Usage:\n");
     printf("  MLFramework train <layout.tsl> <data_dir> <train_desc.tsd>\n");
     printf("  MLFramework infer <model.tsn> <input_file>\n");
+    printf("  MLFramework snake [train|play] <model_path?>\n");
 }
+
+// Forward declare snake main
+int snake_main(int argc, char** argv);
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -115,8 +119,10 @@ int main(int argc, char** argv) {
         
         // Load input (assuming single MNIST image for Demo)
         // Or specific input format?
-        // For simplicity, let's just make a dummy input or load one from file
+         // For simplicity, let's just make a dummy input or load one from file
          printf("Inference on %s not fully implemented for generic files yet.\n", input_file);
+    } else if (strcmp(command, "snake") == 0) {
+        return snake_main(argc, argv);
     } else {
         print_usage();
     }
