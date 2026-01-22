@@ -1,8 +1,8 @@
 #ifndef SNAKE_GAME_H
 #define SNAKE_GAME_H
 
-#include "../../../include/base_defs.h"
-#include "../../../include/tensorNew.h"
+#include <mlframework/base_defs.h>
+#include <mlframework/tensorNew.h>
 
 // Grid Size
 #define GRID_W 10

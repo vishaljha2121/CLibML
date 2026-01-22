@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
-#include "../../../include/base_defs.h"
-#include "../../../include/str.h"
+#include <mlframework/base_defs.h>
+#include <mlframework/str.h>
 #include "snake_game.h"
 #include "snake_ai.h"
 
@@ -145,23 +145,23 @@ void snake_play(mg_arena* arena, char* model_path) {
     printf("\nGame Over! Final Score: %d\n", state.score);
 }
 
-int snake_main(int argc, char** argv) {
+int main(int argc, char** argv) {
     mga_desc desc = { .desired_max_size = MGA_MiB(64), .desired_block_size = MGA_MiB(4) };
     mg_arena* arena = mga_create(&desc);
     
-    if (argc < 3) {
-        printf("Usage: MLFramework snake [train|play] <model_path?>\n");
+    if (argc < 2) {
+        printf("Usage: snake_dqn [train|play] <model_path?>\n");
         return 0;
     }
     
-    if (strcmp(argv[2], "train") == 0) {
-        char* path = (argc > 3) ? argv[3] : NULL;
+    if (strcmp(argv[1], "train") == 0) {
+        char* path = (argc > 2) ? argv[2] : NULL;
         snake_train(arena, path);
-    } else if (strcmp(argv[2], "play") == 0) {
-        char* path = (argc > 3) ? argv[3] : "tests/snake/snake_final.tsn";
+    } else if (strcmp(argv[1], "play") == 0) {
+        char* path = (argc > 2) ? argv[2] : "tests/snake/snake_final.tsn";
         snake_play(arena, path);
     } else {
-        printf("Unknown command: %s\n", argv[2]);
+        printf("Unknown command: %s\n", argv[1]);
     }
     
     mga_destroy(arena);

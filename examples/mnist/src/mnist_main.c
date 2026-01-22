@@ -3,10 +3,9 @@
 //
 #include <stdio.h>
 #include <string.h>
-#include "../include/network.h"
-#include "../include/err.h"
-#include "utils/desc_loader.c" // Including .c for simplicity in rapid dev, ideally .h
-#include "utils/data_loader.c" // Including .c for simplicity
+#include <mlframework/network.h>
+#include <mlframework/base_defs.h>
+#include <mlframework/mg_arena.h>
 
 void print_usage() {
     printf("Usage:\n");

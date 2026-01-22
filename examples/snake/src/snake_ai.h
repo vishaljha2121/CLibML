@@ -1,8 +1,8 @@
 #ifndef SNAKE_AI_H
 #define SNAKE_AI_H
 
-#include "../../../include/network.h"
-#include "../../../include/tensorNew.h"
+#include <mlframework/network.h>
+#include <mlframework/tensorNew.h>
 #include "snake_game.h"
 
 #define MAX_REPLAY_SIZE 10000

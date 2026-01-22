@@ -2,6 +2,19 @@
 
 A custom, high-performance Machine Learning Framework written in C. This framework provides a flexible neural network implementation with a command-line interface for training and inference.
 
+## 🏗️ Project Structure
+
+```
+MLFramework/
+├── lib/                    # Core MLFramework library (installable)
+│   ├── include/mlframework/  # Public API headers
+│   └── src/                  # Implementation
+├── examples/               # Example projects
+│   ├── snake/              # Snake DQN (reinforcement learning)
+│   └── mnist/              # MNIST classifier
+└── cmake/                  # Installation configs (pkg-config, CMake)
+```
+
 ## Key Highlights
 
 ### 1. Custom Memory Arena Allocator (`mg_arena`)

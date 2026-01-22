@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
-#include "../../../include/layers.h"
+#include <mlframework/layers.h>
 
 // Helper to copy weights from src network to dest network
 static void _snake_update_target_net(network* dest, const network* src) {
