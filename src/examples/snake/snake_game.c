@@ -112,41 +112,65 @@ void snake_get_state(SnakeState* state, tensor* out) {
     
     Point head = state->body[0];
     
-    // 1. Danger (Up, Right, Down, Left)
+    // 1. Danger Detection (Up, Right, Down, Left) - 3 levels
+    // 0.0 = safe, 0.5 = body collision, 1.0 = wall
+    
     // Check Up (x, y-1)
-    if (head.y - 1 < 0) data[0] = 1.0f;
-    else {
-        for (int i = 1; i < state->length; i++) 
-            if (state->body[i].x == head.x && state->body[i].y == head.y - 1) data[0] = 1.0f;
+    if (head.y - 1 < 0) {
+        data[0] = 1.0f;  // Wall
+    } else {
+        data[0] = 0.0f;  // Safe by default
+        for (int i = 1; i < state->length; i++) {
+            if (state->body[i].x == head.x && state->body[i].y == head.y - 1) {
+                data[0] = 0.5f;  // Body
+                break;
+            }
+        }
     }
     
     // Check Right (x+1, y)
-    if (head.x + 1 >= GRID_W) data[1] = 1.0f;
-    else {
-        for (int i = 1; i < state->length; i++) 
-            if (state->body[i].x == head.x + 1 && state->body[i].y == head.y) data[1] = 1.0f;
+    if (head.x + 1 >= GRID_W) {
+        data[1] = 1.0f;  // Wall
+    } else {
+        data[1] = 0.0f;
+        for (int i = 1; i < state->length; i++) {
+            if (state->body[i].x == head.x + 1 && state->body[i].y == head.y) {
+                data[1] = 0.5f;  // Body
+                break;
+            }
+        }
     }
     
     // Check Down (x, y+1)
-    if (head.y + 1 >= GRID_H) data[2] = 1.0f;
-    else {
-        for (int i = 1; i < state->length; i++) 
-            if (state->body[i].x == head.x && state->body[i].y == head.y + 1) data[2] = 1.0f;
+    if (head.y + 1 >= GRID_H) {
+        data[2] = 1.0f;  // Wall
+    } else {
+        data[2] = 0.0f;
+        for (int i = 1; i < state->length; i++) {
+            if (state->body[i].x == head.x && state->body[i].y == head.y + 1) {
+                data[2] = 0.5f;  // Body
+                break;
+            }
+        }
     }
     
     // Check Left (x-1, y)
-    if (head.x - 1 < 0) data[3] = 1.0f;
-    else {
-        for (int i = 1; i < state->length; i++) 
-            if (state->body[i].x == head.x - 1 && state->body[i].y == head.y) data[3] = 1.0f;
+    if (head.x - 1 < 0) {
+        data[3] = 1.0f;  // Wall
+    } else {
+        data[3] = 0.0f;
+        for (int i = 1; i < state->length; i++) {
+            if (state->body[i].x == head.x - 1 && state->body[i].y == head.y) {
+                data[3] = 0.5f;  // Body
+                break;
+            }
+        }
     }
 
     // 2. Current Direction (Up, Right, Down, Left)
-    // We need to infer direction from Head vs second segment.
     Point neck = state->body[1];
     if (state->length < 2) {
-         // Default if single (shouldn't happen with init 3)
-         data[5] = 1.0f; // Assume Right
+         data[5] = 1.0f; // Default Right
     } else {
         if (head.y < neck.y) data[4] = 1.0f; // Up
         else if (head.x > neck.x) data[5] = 1.0f; // Right

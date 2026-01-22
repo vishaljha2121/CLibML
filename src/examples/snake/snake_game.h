@@ -17,9 +17,9 @@
 #define STATE_SIZE 12
 
 // Rewards
-#define REWARD_FOOD 20.0f
-#define REWARD_COLLISION -100.0f
-#define REWARD_STEP -0.1f
+#define REWARD_FOOD 50.0f      // Increased to make food more attractive (was 20.0)
+#define REWARD_COLLISION -50.0f  // Reduced to encourage risk-taking (was -100.0)
+#define REWARD_STEP 0.0f        // Removed to allow longer exploration (was -0.1)
 
 typedef struct {
     int x, y;

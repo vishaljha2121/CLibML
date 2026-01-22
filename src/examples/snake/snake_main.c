@@ -19,11 +19,9 @@ void snake_train(mg_arena* arena, char* load_path) {
     if (load_path) {
         printf("Resuming training from %s\n", load_path);
         snake_agent_load(agent, str8_from_cstr((u8*)load_path));
-        agent->epsilon = 0.5f; 
+        // Keep loaded epsilon value - don't reset (maintains decay continuity)
         
         // Parse episode number from path to offset start
-        // Format: ...snake_model_%d.tsn
-        // Find last underscore
         char* underscore = strrchr(load_path, '_');
         if (underscore) {
             sscanf(underscore + 1, "%d", &start_episode);

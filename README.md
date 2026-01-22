@@ -159,46 +159,62 @@ To run inference using a trained model:
 
 ## Snake Reinforcement Learning (DQN)
 
-This project includes a fully functional Reinforcement Learning example where an AI learns to play Snake using Deep Q-Learning (DQN).
+This project includes a production-ready Deep Q-Learning implementation where an AI learns to play Snake from scratch.
 
 ### 1. Overview
-- **Environment**: A custom 10x10 Snake implementation (`src/examples/snake`).
-- **Algorithm**: Deep Q-Network (DQN) with Experience Replay and Epsilon-Greedy exploration.
-- **Rendering**: Retro-style console graphics with in-place updates.
+- **Environment**: Custom 10×10 Snake game with retro console rendering
+- **Algorithm**: Deep Q-Network (DQN) with Target Network, Experience Replay, and ε-greedy exploration
+- **State Representation**: 12-dimensional feature vector (danger detection, movement direction, food location)
+- **Performance**: Achieves scores of 30-60 after 20k episodes
 
 ### 2. Architecture
-- **`snake_game.c`**: Handles game logic (movement, collision, food, state representation).
-- **`snake_ai.c`**: Implements the DQN Agent.
-    - **Replay Buffer**: Stores moves (State, Action, Reward, Next State) to train on random batches.
-    - **Custom Training Loop**: Manually calls `network_feedforward` and `layer_backprop` to implement the Q-Learning update rule: `Q(s,a) = r + gamma * max(Q(s'))`.
-- **`snake_main.c`**: CLI entry point for the snake command.
+- **`snake_game.c`**: Game environment (physics, collisions, rewards)
+- **`snake_ai.c`**: DQN Agent with target network and replay buffer
+- **`snake_main.c`**: Training and evaluation CLI
+
+**Key Features**:
+- Target network updated every 1000 steps for stability
+- 10k-sample replay buffer with random batch sampling
+- Feature-based state (not raw pixels) for faster learning
+- Sparse gradient updates (only selected action)
 
 ### 3. How to Run
 
-#### Train the Agent
-Train the agent from scratch or resume from a checkpoint.
+#### Train from Scratch
 ```bash
-# Start fresh
 ./MLFramework snake train
-
-# Resume from a model (e.g., after 300 episodes)
-./MLFramework snake train tests/snake/snake_model_300.tsn
+# Saves checkpoints every 1000 episodes to tests/snake/
 ```
-*Models are saved to `tests/snake/` every 100 episodes.*
 
-#### Watch the AI Play
-Load a trained model and watch it play in your terminal.
+#### Resume Training
 ```bash
-./MLFramework snake play tests/snake/snake_final.tsn
+./MLFramework snake train tests/snake/snake_model_5000.tsn
+# Continues from episode 5000
+```
+
+#### Watch Trained Agent
+```bash
+./MLFramework snake play tests/snake/snake_model_20000.tsn
 ```
 
 ### 4. Implementation Details
-- **State**: A 10x10 grid flattened to 100 inputs. Values: Empty(0), Body(1), Food(2), Head(3).
+- **State Features** (12 inputs):
+  - Danger detection (4): 0.0=safe, 0.5=body, 1.0=wall
+  - Current direction (4): One-hot encoded
+  - Food direction (4): Relative position flags
+- **Network**: 12 → Dense(128) → ReLU → Dense(128) → ReLU → 4 Q-values
 - **Rewards**:
-    - **Food**: +20.0 (High reward for objective)
-    - **Death**: -100.0 (Severe penalty for dying)
-    - **Step**: -0.1 (Small penalty to encourage speed)
-- **Epsilon Decay**: Starts at 1.0 (100% random) and decays to 0.01 over ~1000 episodes to shift from Exploration to Exploitation.
+  - Food: +50.0
+  - Collision: -50.0  
+  - Step: 0.0
+- **Hyperparameters**:
+  - Batch size: 32
+  - Learning rate: 0.001 (Adam)
+  - γ (discount): 0.99
+  - ε decay: 0.9995 per episode
+  - Target update: Every 1000 training steps
+
+> **Note**: See `src/examples/snake/README.md` for detailed algorithm explanation and architecture diagrams.
 
 ## File Formats
 

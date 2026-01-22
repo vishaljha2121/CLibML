@@ -53,6 +53,7 @@ SnakeAgent* snake_agent_create(mg_arena* arena) {
     agent->optim = (optimizer){
         .type = OPTIMIZER_ADAM,
         .learning_rate = 0.001f,
+        ._batch_size = BATCH_SIZE,  // Ensure gradients are averaged over batch
         .adam = { .beta1 = 0.9f, .beta2 = 0.999f, .epsilon = 1e-7f }
     };
     
@@ -133,42 +134,50 @@ void snake_agent_train(SnakeAgent* agent) {
         memcpy(next_state_t->data, &agent->memory_next_states[idx * STATE_SIZE], STATE_SIZE * sizeof(f32));
         
         // 1. Manual Feedforward State (Populating Backprop Cache)
-        // Reset in_out to state input
         tensor_copy_ip(in_out, state_t);
         in_out->shape = agent->net->layers[0]->shape; 
         
         for (u32 l = 0; l < agent->net->num_layers; l++) {
             layer_feedforward(agent->net->layers[l], in_out, &cache);
         }
-        // Save prediction for target calc
         tensor_copy_ip(q_eval, in_out); 
 
         // 2. Feedforward Next State using TARGET NETWORK
         network_feedforward(agent->target_net, q_next, next_state_t);
 
-        // 3. Compute Target
+        // 3. Compute Q-Target (FIXED: only for selected action)
         int action = agent->replay_buffer.buffer[idx].action;
         f32 reward = agent->replay_buffer.buffer[idx].reward;
         b32 done = agent->replay_buffer.buffer[idx].done;
 
-        tensor_copy_ip(q_target, q_eval);
-        f32* target_data = (f32*)q_target->data;
-        f32* next_data = (f32*)q_next->data;
-
-        f32 new_q = reward;
-        if (!done) {
-            f32 max_next = -1e9f;
-            for (int a = 0; a < NUM_ACTIONS; a++) {
-                if (next_data[a] > max_next) max_next = next_data[a];
-            }
-            new_q += GAMMA * max_next;
+        // Get current Q-value for selected action
+        f32* q_values = (f32*)q_eval->data;
+        f32 q_current = q_values[action];
+        
+        // Compute target Q-value for selected action
+        f32* next_q_values = (f32*)q_next->data;
+        f32 max_next_q = -1e9f;
+        for (int a = 0; a < NUM_ACTIONS; a++) {
+            if (next_q_values[a] > max_next_q) max_next_q = next_q_values[a];
         }
-        target_data[action] = new_q;
+        
+        f32 q_target_value = reward;
+        if (!done) {
+            q_target_value += GAMMA * max_next_q;
+        }
 
-        // 4. Backprop
-        cost_grad(COST_MEAN_SQUARED_ERROR, in_out, q_target); 
-        tensor* delta = in_out; // Renamed for clarity
+        // 4. Compute TD Error and Create Sparse Gradient
+        // CRITICAL: Only compute error for the action that was taken
+        // Other actions shouldn't be trained (no observation)
+        f32 td_error = q_current - q_target_value;
+        
+        // Create sparse delta: all zeros except for selected action
+        tensor_fill(in_out, 0.0f);
+        ((f32*)in_out->data)[action] = td_error;
+        
+        tensor* delta = in_out;
 
+        // 5. Backpropagate TD error
         for (i64 l = agent->net->num_layers - 1; l >= 0; l--) {
             layer_backprop(agent->net->layers[l], delta, &cache);
         }

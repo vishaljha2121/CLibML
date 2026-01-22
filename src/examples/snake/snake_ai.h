@@ -10,7 +10,7 @@
 #define GAMMA 0.99f
 #define EPSILON_START 1.0f
 #define EPSILON_END 0.01f
-#define EPSILON_DECAY 0.995f
+#define EPSILON_DECAY 0.9995f // Reaches ~0.01 at 10k episodes (was 0.995 -> too fast)
 #define TARGET_UPDATE_FREQ 1000 // Steps
 
 typedef struct {
