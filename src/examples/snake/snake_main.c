@@ -13,22 +13,36 @@ void snake_train(mg_arena* arena, char* load_path) {
     printf("Initializing Snake Training...\n");
     SnakeAgent* agent = snake_agent_create(arena);
     
+    int start_episode = 0;
+    int total_episodes = 100000;
+    
     if (load_path) {
         printf("Resuming training from %s\n", load_path);
         snake_agent_load(agent, str8_from_cstr((u8*)load_path));
-        // Reduce epsilon if resuming, but keep some exploration
         agent->epsilon = 0.5f; 
+        
+        // Parse episode number from path to offset start
+        // Format: ...snake_model_%d.tsn
+        // Find last underscore
+        char* underscore = strrchr(load_path, '_');
+        if (underscore) {
+            sscanf(underscore + 1, "%d", &start_episode);
+            printf("Resuming from Episode %d\n", start_episode);
+        }
     }
     
+    // Adjust total to include history or add to it? 
+    // User wants "33k + no_of_episodes". 
+    // Let's say total goal is start + 100k.
+    int end_episode = start_episode + total_episodes;
+
     SnakeState state;
     tensor* state_tensor = tensor_create(arena, (tensor_shape){ STATE_SIZE, 1, 1 });
     tensor* next_state_tensor = tensor_create(arena, (tensor_shape){ STATE_SIZE, 1, 1 });
     
-    int episodes = 100000;
-    
     time_t start_time = time(NULL);
 
-    for (int e = 0; e < episodes; e++) {
+    for (int e = start_episode; e < end_episode; e++) {
         snake_init(&state);
         snake_get_state(&state, state_tensor);
         
@@ -53,19 +67,26 @@ void snake_train(mg_arena* arena, char* load_path) {
         
         snake_agent_decay_epsilon(agent);
 
-        if (e % 1000 == 0 || e == episodes - 1) {
+        if (e % 1000 == 0 || e == end_episode - 1) {
             // ETA Calculation
             time_t now = time(NULL);
             double elapsed = difftime(now, start_time);
-            double avg_time = (e == 0) ? 0.0 : elapsed / e;
-            double remaining = avg_time * (episodes - e);
+            
+            // Episodes done THIS session
+            int episodes_done_session = e - start_episode; 
+            if (episodes_done_session == 0) episodes_done_session = 1; // Avoid div 0
+            
+            double avg_time = elapsed / episodes_done_session;
+            double remaining = avg_time * (end_episode - e);
             
             int rem_h = (int)(remaining / 3600);
             int rem_m = (int)((remaining - rem_h * 3600) / 60);
             int rem_s = (int)remaining % 60;
             
-            // Progress Bar
-            float progress = (float)e / episodes;
+            // Progress Bar (Total progress including history?)
+            // Or Session progress? User probably wants to see progress towards the new Goal.
+            // Let's show TOTAL progress relative to new goal.
+            float progress = (float)(e - start_episode) / total_episodes;
             int bar_width = 40;
             int pos = bar_width * progress;
             char bar[41];
@@ -86,7 +107,7 @@ void snake_train(mg_arena* arena, char* load_path) {
             snake_agent_save(agent, path);
             mga_scratch_release(scratch);
             
-            if (e % 1000 == 0 && e > 0) printf("\n"); // Newline occasionally to keep history
+            if (e % 1000 == 0 && episodes_done_session > 0) printf("\n"); 
         }
     }
     

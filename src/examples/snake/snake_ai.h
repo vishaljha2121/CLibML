@@ -11,6 +11,7 @@
 #define EPSILON_START 1.0f
 #define EPSILON_END 0.01f
 #define EPSILON_DECAY 0.995f
+#define TARGET_UPDATE_FREQ 1000 // Steps
 
 typedef struct {
     tensor* state;
@@ -28,15 +29,22 @@ typedef struct {
 
 typedef struct {
     network* net;
+    network* target_net; // Target Network
+    
+    // Persistent Replay Storage (Owned by Agent)
+    f32* memory_states;      // [MAX_REPLAY_SIZE * STATE_SIZE]
+    f32* memory_next_states; // [MAX_REPLAY_SIZE * STATE_SIZE]
+    
     ReplayBuffer replay_buffer;
     optimizer optim;
     
     f32 epsilon;
+    u64 train_step; // For target net sync
     
     // Temp tensors for training
-    tensor* batch_states;      // (GridSize, BatchSize)
-    tensor* batch_next_states; // (GridSize, BatchSize)
-    tensor* batch_rewards;     // (1, BatchSize) Wait, just float array
+    tensor* batch_states;
+    tensor* batch_next_states;
+    tensor* batch_rewards;
     int batch_actions[BATCH_SIZE];
     b32 batch_dones[BATCH_SIZE];
 } SnakeAgent;
