@@ -137,6 +137,218 @@ every 1000 training steps:
     Q_target ← Q_main  // Hard update
 ```
 
+---
+
+## 🔧 What Was Actually Implemented
+
+This section details the **specific DQN components** implemented in the code, not just theory.
+
+### Core DQN Algorithm (`snake_ai.c`)
+
+#### 1. **Dual Network Architecture**
+```c
+// In snake_agent_create():
+agent->net = network_create(arena, 6, descs, true);        // Main network
+agent->target_net = network_create(arena, 6, descs, false); // Target network
+_snake_update_target_net(agent->target_net, agent->net);   // Initialize equal
+```
+
+**Implementation**:
+- Two identical neural networks (12→128→ReLU→128→ReLU→4)
+- Main network: Updated every batch via gradient descent
+- Target network: Frozen except for periodic hard copies
+- Custom `_snake_update_target_net()` copies weights layer-by-layer
+
+#### 2. **Experience Replay Buffer**
+```c
+typedef struct {
+    Experience buffer[MAX_REPLAY_SIZE];  // Circular buffer
+    int head;                             // Write pointer
+    int count;                            // Number stored
+} ReplayBuffer;
+
+// Persistent memory storage
+agent->memory_states = MGA_PUSH_ARRAY(arena, f32, MAX_REPLAY_SIZE * STATE_SIZE);
+agent->memory_next_states = MGA_PUSH_ARRAY(arena, f32, MAX_REPLAY_SIZE * STATE_SIZE);
+```
+
+**Implementation**:
+- Fixed-size circular buffer (10,000 experiences)
+- Stores: `(state, action, reward, next_state, done)`
+- Persistent memory allocation (no malloc per experience)
+- Random sampling during training breaks temporal correlation
+
+#### 3. **Q-Learning Update Rule** (Fixed Implementation)
+```c
+// In snake_agent_train():
+for (int i = 0; i < BATCH_SIZE; i++) {
+    int idx = rand() % agent->replay_buffer.count;
+    
+    // Forward pass through main network (populates cache for backprop)
+    tensor_copy_ip(in_out, state_t);
+    for (u32 l = 0; l < agent->net->num_layers; l++) {
+        layer_feedforward(agent->net->layers[l], in_out, &cache);
+    }
+    tensor_copy_ip(q_eval, in_out);
+    
+    // Forward pass through target network
+    network_feedforward(agent->target_net, q_next, next_state_t);
+    
+    // Compute TD target (CRITICAL FIX)
+    f32 q_current = q_eval->data[action];
+    f32 max_next_q = max(q_next->data);  // Best future action
+    f32 q_target_value = reward + (done ? 0 : GAMMA * max_next_q);
+    
+    // Sparse gradient: only update selected action
+    tensor_fill(delta, 0.0f);
+    delta->data[action] = q_current - q_target_value;  // TD error
+    
+    // Backpropagate
+    for (i64 l = net->num_layers - 1; l >= 0; l--) {
+        layer_backprop(net->layers[l], delta, &cache);
+    }
+}
+```
+
+**Key Implementation Details**:
+- **Manual feedforward** to populate backprop cache
+- **Sparse gradient**: Only action taken gets error signal (others = 0)
+- **Target network for stability**: Uses frozen Q_target for max(Q(s'))
+- **Batch accumulation**: Gradients accumulate over 32 samples before optimizer update
+
+#### 4. **Epsilon-Greedy Action Selection**
+```c
+int snake_agent_act(SnakeAgent* agent, SnakeState* state, tensor* state_tensor) {
+    // Exploration
+    if ((float)rand() / RAND_MAX < agent->epsilon) {
+        return rand() % NUM_ACTIONS;
+    }
+    
+    // Exploitation
+    tensor* out = tensor_create(scratch.arena, (tensor_shape){NUM_ACTIONS, 1, 1});
+    network_feedforward(agent->net, out, state_tensor);
+    
+    tensor_index argmax = tensor_argmax(out);
+    return argmax.y * out->shape.width + argmax.x;
+}
+```
+
+**Implementation**:
+- Epsilon starts at 1.0 (100% random)
+- Decays by 0.9995 per episode
+- Reaches ~0.01 at 10,000 episodes
+- Uses tensor_argmax() for greedy action
+
+#### 5. **Target Network Update Mechanism**
+```c
+// In snake_agent_train():
+agent->train_step++;
+if (agent->train_step % TARGET_UPDATE_FREQ == 0) {
+    _snake_update_target_net(agent->target_net, agent->net);
+}
+
+// Weight copy implementation:
+static void _snake_update_target_net(network* dest, const network* src) {
+    for (u32 i = 0; i < dest->num_layers; i++) {
+        // Copy dense layer weights + biases
+        tensor_copy_ip(dest->layers[i]->dense_backend.weight, 
+                      src->layers[i]->dense_backend.weight);
+        tensor_copy_ip(dest->layers[i]->dense_backend.bias,
+                      src->layers[i]->dense_backend.bias);
+    }
+}
+```
+
+**Implementation**:
+- Hard update every 1000 training steps (not episodes)
+- Copies all weights/biases layer-by-layer
+- No soft updates (τ-based averaging)
+
+#### 6. **Adam Optimizer Integration**
+```c
+agent->optim = (optimizer){
+    .type = OPTIMIZER_ADAM,
+    .learning_rate = 0.001f,
+    ._batch_size = BATCH_SIZE,  // Averages gradients over 32 samples
+    .adam = { .beta1 = 0.9f, .beta2 = 0.999f, .epsilon = 1e-7f }
+};
+
+// After batch:
+for (u32 i = 0; i < agent->net->num_layers; i++) {
+    layer_apply_changes(agent->net->layers[i], &agent->optim);
+}
+```
+
+**Implementation**:
+- Momentum-based adaptive learning rate
+- Batch size = 32 (gradients averaged)
+- No learning rate decay schedule
+
+### State Feature Engineering (`snake_game.c`)
+
+#### 3-Level Danger Encoding
+```c
+void snake_get_state(SnakeState* state, tensor* out) {
+    f32* data = (f32*)out->data;
+    
+    // Check each direction (Up, Right, Down, Left)
+    for (int i = 0; i < 4; i++) {
+        int nx = head.x + dx[i];
+        int ny = head.y + dy[i];
+        
+        if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) {
+            data[i] = 1.0f;  // Wall collision
+        } else if (grid[ny][nx] == CELL_BODY || grid[ny][nx] == CELL_HEAD) {
+            data[i] = 0.5f;  // Body collision
+        } else {
+            data[i] = 0.0f;  // Safe
+        }
+    }
+    
+    // One-hot direction encoding
+    data[4 + state->direction] = 1.0f;
+    
+    // Food direction flags
+    data[8]  = (food.y < head.y) ? 1.0f : 0.0f;  // Up
+    data[9]  = (food.x > head.x) ? 1.0f : 0.0f;  // Right
+    data[10] = (food.y > head.y) ? 1.0f : 0.0f;  // Down
+    data[11] = (food.x < head.x) ? 1.0f : 0.0f;  // Left
+}
+```
+
+**Implementation**:
+- Binary wall detection
+- Gradual body detection (0.5 vs 1.0)
+- Relative food position
+- Total: 12 float features
+
+### Reward System (`snake_game.h`)
+
+```c
+#define REWARD_FOOD      50.0f   // Eating food
+#define REWARD_COLLISION -50.0f  // Death penalty
+#define REWARD_STEP      0.0f    // No per-step penalty
+```
+
+**Implementation**:
+- Balanced 1:1 ratio encourages exploration
+- No step penalty allows long episodes
+- Simple, sparse reward signal
+
+---
+
+## 📊 Implementation Statistics
+
+| Component | Size | Details |
+|-----------|------|---------|
+| **Network Params** | ~33,000 | (12×128 + 128) + (128×128 + 128) + (128×4 + 4) |
+| **Replay Buffer** | 10,000 exp | 10,000 × (12 + 12 + 1 + 1 + 1) bytes ≈ 270 KB |
+| **Training Steps** | 100k eps | ~3M steps total (avg 30 steps/episode) |
+| **Forward Passes** | ~6M | 2 per training step (main + target) |
+| **Backprop Calls** | ~3.2M | 32 per batch × 100k steps |
+
+---
+
 ### Key DQN Components
 
 #### ✅ Target Network
